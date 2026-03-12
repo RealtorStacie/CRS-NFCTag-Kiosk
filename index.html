@@ -8,27 +8,37 @@
         * { box-sizing: border-box; }
         :root { --crs-blue: #00B6ED; --crs-navy: #002244; --crs-gold: #C5A059; }
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; overflow: hidden; background-color: var(--crs-navy); }
-        .screen { position: absolute; width: 100%; height: 100%; background-size: 100% 100%; background-position: center; background-repeat: no-repeat; display: none; flex-direction: column; align-items: center; }
+        
+        .screen { 
+            position: absolute; width: 100%; height: 100%; 
+            background-size: 100% 100%; background-position: center; 
+            background-repeat: no-repeat; display: none; 
+            flex-direction: column; align-items: center; 
+        }
         .active { display: flex; }
         
         /* Transparent Hit Zones */
-        .hit-zone { background: rgba(255, 255, 255, 0); border: none; cursor: pointer; position: absolute; }
+        .hit-zone { background: rgba(255, 255, 255, 0); border: none; cursor: pointer; position: absolute; z-index: 10; }
 
-        /* GLOBAL RESET: The Shield Logo in Top Left */
-        .global-reset { top: 2%; left: 2%; width: 10%; height: 12%; z-index: 100; }
+        /* GLOBAL RESET: Only for internal pages (2, 3, 4, 5) */
+        .global-reset { top: 0; left: 0; width: 15%; height: 18%; z-index: 50; }
 
-        /* Screen-Specific Coordinates */
-        #startBtn { top: 10%; left: 40%; width: 25%; height: 12%; }
+        /* Screen 1 Button: No overlap anymore */
+        #startBtn { top: 10%; left: 45%; width: 25%; height: 15%; }
+
+        /* Navigation Buttons */
         #doneStep1Btn { bottom: 8%; left: 32%; width: 36%; height: 12%; }
         #contactChoice { top: 43%; left: 8%; width: 35%; height: 16%; }
         #urlChoice { top: 43%; right: 8%; width: 35%; height: 16%; }
         #writeBtn { bottom: 4%; left: 16%; width: 68%; height: 13%; border-radius: 20px; }
+        
+        /* Confirmation Screen Buttons */
         #thanksBtn { bottom: 40%; left: 14%; width: 36%; height: 15%; }
         #restartBtn { bottom: 50%; right: 15%; width: 36%; height: 15%; }
 
-        /* Form Area */
+        /* Form Styling */
         .form-container { position: absolute; top: 22%; width: 62%; height: 48%; display: flex; flex-direction: column; gap: 1vh; justify-content: center; }
-        input, textarea { padding: 1.5vh; border-radius: 6px; border: 1px solid #ccc; font-size: 1.8vh; width: 100%; background: white; }
+        input, textarea { padding: 1.5vh; border-radius: 6px; border: 1px solid #ccc; font-size: 1.8vh; width: 100%; background: white; color: #333; }
         textarea { height: 10vh; resize: none; }
         .char-counter { font-size: 1.2vh; color: #333; text-align: right; margin-top: -5px; }
 
@@ -38,7 +48,6 @@
 <body>
 
     <div id="screen1" class="screen active" style="background-image: url('bg_start.png');">
-        <button class="hit-zone global-reset" onclick="resetKiosk()"></button>
         <button id="startBtn" class="hit-zone" onclick="nextScreen(2)"></button>
     </div>
 
@@ -65,7 +74,8 @@
             <div id="charCount" class="char-counter">150 chars remaining</div>
         </div>
         <div id="urlFields" class="form-container" style="display:none;">
-            <input type="url" id="urlInput" placeholder="https://linktr.ee/yourname" maxlength="100">
+            <p style="color:#333; font-weight:bold; margin-bottom:5px;">Enter your Website URL:</p>
+            <input type="url" id="urlInput" placeholder="https://yourwebsite.com" maxlength="100">
         </div>
         <button id="writeBtn" class="hit-zone" onclick="initiateWrite()"></button>
     </div>
@@ -109,45 +119,33 @@
                 alert("NFC not supported. Use Chrome on Android.");
                 return;
             }
-            
             const modal = document.getElementById('nfcModal');
-            const modalText = document.getElementById('modalText');
-            const modalSub = document.getElementById('modalSubtext');
             modal.style.display = 'flex';
 
             try {
                 const ndef = new NDEFReader();
                 await ndef.scan();
-                await new Promise(resolve => setTimeout(resolve, 300));
+                await new Promise(r => setTimeout(r, 400));
 
                 let record;
                 if (currentMode === 'url') {
                     record = { recordType: "url", data: document.getElementById('urlInput').value.trim() };
                 } else {
-            // 1. Build the clean vCard string
-            const vcard = 
-                "BEGIN:VCARD\r\n" +
-                "VERSION:3.0\r\n" +
-                "FN:" + document.getElementById('fn').value.trim() + "\r\n" +
-                "TEL;TYPE=CELL:" + document.getElementById('tel').value.trim() + "\r\n" +
-                "EMAIL:" + document.getElementById('email').value.trim() + "\r\n" +
-                "ADR;TYPE=WORK:;;;" + document.getElementById('city').value.trim() + ";" + document.getElementById('state').value.trim() + ";;\r\n" +
-                "NOTE:" + document.getElementById('notes').value.trim() + "\r\n" +
-                "END:VCARD";
-            
-            // 2. Encode it as a standard MIME record
-            const contactRecord = { 
-                recordType: "mime", 
-                mimeType: "text/vcard", 
-                data: new TextEncoder().encode(vcard) 
-            };
-
-            // 3. THE FAILSAFE: Write it as a multi-record array
-            await ndef.write({ records: [contactRecord] });
-        }
+                    const vcard = 
+                        "BEGIN:VCARD\r\n" +
+                        "VERSION:3.0\r\n" +
+                        "FN:" + document.getElementById('fn').value.trim() + "\r\n" +
+                        "TEL;TYPE=CELL:" + document.getElementById('tel').value.trim() + "\r\n" +
+                        "EMAIL:" + document.getElementById('email').value.trim() + "\r\n" +
+                        "ADR;TYPE=WORK:;;;" + document.getElementById('city').value.trim() + ";" + document.getElementById('state').value.trim() + ";;\r\n" +
+                        "NOTE:" + document.getElementById('notes').value.trim() + "\r\n" +
+                        "END:VCARD";
                     
-                    const vcardUri = "data:text/vcard;base64," + btoa(unescape(encodeURIComponent(vcard)));
-                    record = { recordType: "url", data: vcardUri };
+                    record = { 
+                        recordType: "mime", 
+                        mimeType: "text/x-vcard", 
+                        data: new TextEncoder().encode(vcard) 
+                    };
                 }
 
                 await ndef.write({ records: [record] });
@@ -155,8 +153,7 @@
                 nextScreen(5);
 
             } catch (error) {
-                modalText.innerText = "❌ TOUCH ERROR";
-                modalSub.innerText = "Hold the tag still against the center of the device.";
+                document.getElementById('modalText').innerText = "❌ TOUCH ERROR";
                 setTimeout(() => { modal.style.display = 'none'; }, 3500);
             }
         }
