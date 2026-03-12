@@ -114,49 +114,56 @@
             nextScreen(4);
         }
 
-        async function initiateWrite() {
-            if (!('NDEFReader' in window)) {
-                alert("NFC not supported. Use Chrome on Android.");
-                return;
-            }
-            const modal = document.getElementById('nfcModal');
-            modal.style.display = 'flex';
+     async function initiateWrite() {
+    if (!('NDEFReader' in window)) {
+        alert("NFC not supported. Use Chrome on Android.");
+        return;
+    }
+    
+    const modal = document.getElementById('nfcModal');
+    const modalText = document.getElementById('modalText');
+    const modalSub = document.getElementById('modalSubtext');
+    
+    modalText.innerText = "⏳ GENERATING...";
+    modalSub.innerText = "Syncing with your Lead Sheet...";
+    modal.style.display = 'flex';
 
-            try {
-                const ndef = new NDEFReader();
-                await ndef.scan();
-                await new Promise(r => setTimeout(r, 500)); // Longer stabilization
+    try {
+        const formData = {
+            fn: document.getElementById('fn').value.trim(),
+            tel: document.getElementById('tel').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            city: document.getElementById('city').value.trim(),
+            state: document.getElementById('state').value.trim(),
+            notes: document.getElementById('notes').value.trim()
+        };
 
-                let record;
-                if (currentMode === 'url') {
-                    record = { recordType: "url", data: document.getElementById('urlInput').value.trim() };
-                } else {
-                    const vcard = 
-                        "BEGIN:VCARD\r\n" +
-                        "VERSION:3.0\r\n" +
-                        "FN:" + document.getElementById('fn').value.trim() + "\r\n" +
-                        "TEL;TYPE=CELL:" + document.getElementById('tel').value.trim() + "\r\n" +
-                        "EMAIL:" + document.getElementById('email').value.trim() + "\r\n" +
-                        "ADR;TYPE=WORK:;;;" + document.getElementById('city').value.trim() + ";" + document.getElementById('state').value.trim() + ";;\r\n" +
-                        "NOTE:" + document.getElementById('notes').value.trim() + "\r\n" +
-                        "END:VCARD";
-                    
-                    // CHANGE: Using 'unknown' record type to force Android to "sniff" the content
-                    record = { 
-                        recordType: "unknown", 
-                        data: new TextEncoder().encode(vcard) 
-                    };
-                }
+        // SEND DATA TO GOOGLE
+        const response = await fetch('PASTE_YOUR_APPS_SCRIPT_URL_HERE', {
+            method: 'POST',
+            body: JSON.stringify(formData)
+        });
+        const vcfLink = await response.text();
 
-                await ndef.write({ records: [record] });
-                modal.style.display = 'none';
-                nextScreen(5);
+        // WRITE TO NFC
+        modalText.innerText = "📡 TOUCH & HOLD";
+        modalSub.innerText = "Success! Now hold the tag to the back of the tablet...";
+        
+        const ndef = new NDEFReader();
+        await ndef.scan();
+        await ndef.write({
+            records: [{ recordType: "url", data: vcfLink }]
+        });
+        
+        modal.style.display = 'none';
+        nextScreen(5);
 
-            } catch (error) {
-                document.getElementById('modalText').innerText = "❌ TOUCH ERROR";
-                setTimeout(() => { modal.style.display = 'none'; }, 3500);
-            }
-        }
+    } catch (error) {
+        modalText.innerText = "❌ ERROR";
+        modalSub.innerText = "Check connection or permissions.";
+        setTimeout(() => { modal.style.display = 'none'; }, 4000);
+    }
+}
         function resetKiosk() {
             document.querySelectorAll('input, textarea').forEach(i => i.value = '');
             charDisplay.innerText = "150 chars remaining";
