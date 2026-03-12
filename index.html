@@ -169,7 +169,7 @@
         document.body.appendChild(form);
         form.submit();
 
-        modalText.innerText = "📡 READY TO PROGRAM";
+        modalText.innerText = "📡 Tap and Hold the Tag to the NFC Reader";
         await new Promise(r => setTimeout(r, 1500));
 
         const ndef = new NDEFReader();
