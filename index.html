@@ -7,54 +7,26 @@
     <style>
         * { box-sizing: border-box; }
         :root { --crs-blue: #00B6ED; --crs-navy: #002244; --crs-gold: #C5A059; }
-        
-        body, html { 
-            margin: 0; padding: 0; height: 100%; 
-            font-family: 'Segoe UI', sans-serif; 
-            overflow: hidden; background-color: var(--crs-navy); 
-        }
-        
-        .screen { 
-            position: absolute; width: 100%; height: 100%; 
-            background-size: 100% 100%; background-position: center;
-            background-repeat: no-repeat;
-            display: none; flex-direction: column; align-items: center;
-        }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; overflow: hidden; background-color: var(--crs-navy); }
+        .screen { position: absolute; width: 100%; height: 100%; background-size: 100% 100%; background-position: center; background-repeat: no-repeat; display: none; flex-direction: column; align-items: center; }
         .active { display: flex; }
+        .hit-zone { background: rgba(255, 255, 255, 0); border: none; cursor: pointer; position: absolute; }
 
-        .hit-zone {
-            background: rgba(255, 255, 255, 0); /* Change 0 to 0.4 to see buttons for testing */
-            border: none; cursor: pointer; position: absolute;
-        }
-
-        /* Hit Zone Coordinates */
+        /* Coordinates */
         #startBtn { top: 10%; left: 40%; width: 25%; height: 12%; }
         #doneStep1Btn { bottom: 8%; left: 32%; width: 36%; height: 12%; }
         #contactChoice { top: 43%; left: 8%; width: 35%; height: 16%; }
         #urlChoice { top: 43%; right: 8%; width: 35%; height: 16%; }
         #writeBtn { bottom: 4%; left: 16%; width: 68%; height: 13%; border-radius: 20px; }
-        
-        /* Confirmation Screen: Expanded to cover both Wow and Oops buttons */
         #thanksBtn { bottom: 40%; left: 14%; width: 36%; height: 15%; }
         #restartBtn { bottom: 50%; right: 15%; width: 36%; height: 15%; }
 
-        .form-container { 
-            position: absolute; top: 22%; width: 62%; height: 48%;
-            display: flex; flex-direction: column; gap: 1vh; justify-content: center;
-        }
-        input, textarea { 
-            padding: 1.5vh; border-radius: 6px; border: 1px solid #ccc; 
-            font-size: 1.8vh; width: 100%; background: white;
-        }
+        .form-container { position: absolute; top: 22%; width: 62%; height: 48%; display: flex; flex-direction: column; gap: 1vh; justify-content: center; }
+        input, textarea { padding: 1.5vh; border-radius: 6px; border: 1px solid #ccc; font-size: 1.8vh; width: 100%; background: white; }
         textarea { height: 10vh; resize: none; }
         .char-counter { font-size: 1.2vh; color: #333; text-align: right; margin-top: -5px; }
 
-        #nfcModal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,34,68,0.95); color: white;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 1000; text-align: center;
-        }
+        #nfcModal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,34,68,0.95); color: white; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; text-align: center; }
     </style>
 </head>
 <body>
@@ -83,7 +55,6 @@
             <div id="charCount" class="char-counter">150 chars remaining</div>
         </div>
         <div id="urlFields" class="form-container" style="display:none;">
-            <p style="color:#333; margin-bottom:5px;">Enter Website URL:</p>
             <input type="url" id="urlInput" placeholder="https://linktr.ee/yourname" maxlength="100">
         </div>
         <button id="writeBtn" class="hit-zone" onclick="initiateWrite()"></button>
@@ -96,14 +67,14 @@
 
     <div id="nfcModal">
         <h2 id="modalText">📡 READY TO PROGRAM</h2>
-        <p id="modalSubtext">Tap your CRS Tag to the back of the device now.</p>
+        <p id="modalSubtext">Touch and hold the tag to the back of the device...</p>
     </div>
 
     <script>
         let currentMode = 'contact';
-
         const notesInput = document.getElementById('notes');
         const charDisplay = document.getElementById('charCount');
+        
         notesInput.addEventListener('input', () => {
             const remaining = 150 - notesInput.value.length;
             charDisplay.innerText = `${remaining} chars remaining`;
@@ -124,12 +95,11 @@
 
         async function initiateWrite() {
             if (!('NDEFReader' in window)) {
-                alert("NFC not supported. Please use Chrome on Android.");
+                alert("NFC not supported. Use Chrome on Android.");
                 return;
             }
             
             const modal = document.getElementById('nfcModal');
-            const modalText = document.getElementById('modalText');
             modal.style.display = 'flex';
 
             try {
@@ -140,7 +110,6 @@
                 if (currentMode === 'url') {
                     record = { recordType: "url", data: document.getElementById('urlInput').value.trim() };
                 } else {
-                    // Precise VCF format with explicit line breaks for better compatibility
                     const vcard = 
                         "BEGIN:VCARD\r\n" +
                         "VERSION:3.0\r\n" +
@@ -151,20 +120,17 @@
                         "NOTE:" + document.getElementById('notes').value.trim() + "\r\n" +
                         "END:VCARD";
                     
-                    record = { 
-                        recordType: "mime", 
-                        mimeType: "text/x-vcard", 
-                        data: new TextEncoder().encode(vcard) 
-                    };
+                    // THE FIX: Encode as a Data URI to bypass MIME labeling issues
+                    const vcardUri = "data:text/vcard;base64," + btoa(unescape(encodeURIComponent(vcard)));
+                    record = { recordType: "url", data: vcardUri };
                 }
 
                 await ndef.write({ records: [record] });
-                
                 modal.style.display = 'none';
                 nextScreen(5);
 
             } catch (error) {
-                modalText.innerText = "❌ ERROR";
+                document.getElementById('modalText').innerText = "❌ ERROR";
                 document.getElementById('modalSubtext').innerText = error.message;
                 setTimeout(() => { modal.style.display = 'none'; }, 4000);
             }
