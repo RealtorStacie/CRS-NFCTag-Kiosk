@@ -10,15 +10,24 @@
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; overflow: hidden; background-color: var(--crs-navy); }
         .screen { position: absolute; width: 100%; height: 100%; background-size: 100% 100%; background-position: center; background-repeat: no-repeat; display: none; flex-direction: column; align-items: center; }
         .active { display: flex; }
+        
+        /* Transparent Hit Zones */
         .hit-zone { background: rgba(255, 255, 255, 0); border: none; cursor: pointer; position: absolute; z-index: 10; }
-        .global-reset { top: 0; left: 0; width: 15%; height: 18%; z-index: 50; }
-        #startBtn { top: 10%; left: 45%; width: 25%; height: 15%; }
+
+        /* Global Reset (Shield) - ONLY on Screens 2, 3, 4, 5 */
+        .global-reset { top: 0; left: 0; width: 18%; height: 20%; z-index: 50; }
+
+        /* SCREEN 1: Massive Start Button with NO Global Reset overlap */
+        #startBtn { top: 5%; left: 25%; width: 50%; height: 25%; z-index: 100; }
+
+        /* Other Navigation Buttons */
         #doneStep1Btn { bottom: 8%; left: 32%; width: 36%; height: 12%; }
         #contactChoice { top: 43%; left: 8%; width: 35%; height: 16%; }
         #urlChoice { top: 43%; right: 8%; width: 35%; height: 16%; }
         #writeBtn { bottom: 4%; left: 16%; width: 68%; height: 13%; border-radius: 20px; }
         #thanksBtn { bottom: 40%; left: 14%; width: 36%; height: 15%; }
         #restartBtn { bottom: 50%; right: 15%; width: 36%; height: 15%; }
+
         .form-container { position: absolute; top: 22%; width: 62%; height: 48%; display: flex; flex-direction: column; gap: 1vh; justify-content: center; }
         input, textarea { padding: 1.5vh; border-radius: 6px; border: 1px solid #ccc; font-size: 1.8vh; width: 100%; background: white; color: #333; }
         textarea { height: 10vh; resize: none; }
@@ -115,10 +124,9 @@
                     notes: document.getElementById('notes').value.trim()
                 };
 
-                // YOUR INTEGRATED URL
                 const scriptURL = 'https://script.google.com/macros/s/AKfycbwuXRxmk_Af_NvrDf4L1G89hhqF4hJMXgjuvfA4eWzcogBBZ-lzeD9Kqj6Zl6Nde1cJHg/exec';
 
-                // Send to Google
+                // Lead capture
                 fetch(scriptURL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -135,7 +143,6 @@
                 if (currentMode === 'url') {
                     writeData = document.getElementById('urlInput').value.trim();
                 } else {
-                    // Logic: Search for the specific VCF filename we just created on your Drive
                     const safeName = nameValue.replace(/\s+/g, '_');
                     writeData = "https://www.google.com/search?q=" + encodeURIComponent(safeName + ".vcf");
                 }
