@@ -124,15 +124,27 @@
                 if (currentMode === 'url') {
                     record = { recordType: "url", data: document.getElementById('urlInput').value.trim() };
                 } else {
-                    const vcard = 
-                        "BEGIN:VCARD\r\n" +
-                        "VERSION:3.0\r\n" +
-                        "FN:" + document.getElementById('fn').value.trim() + "\r\n" +
-                        "TEL;TYPE=CELL:" + document.getElementById('tel').value.trim() + "\r\n" +
-                        "EMAIL:" + document.getElementById('email').value.trim() + "\r\n" +
-                        "ADR;TYPE=WORK:;;;" + document.getElementById('city').value.trim() + ";" + document.getElementById('state').value.trim() + ";;\r\n" +
-                        "NOTE:" + document.getElementById('notes').value.trim() + "\r\n" +
-                        "END:VCARD";
+            // 1. Build the clean vCard string
+            const vcard = 
+                "BEGIN:VCARD\r\n" +
+                "VERSION:3.0\r\n" +
+                "FN:" + document.getElementById('fn').value.trim() + "\r\n" +
+                "TEL;TYPE=CELL:" + document.getElementById('tel').value.trim() + "\r\n" +
+                "EMAIL:" + document.getElementById('email').value.trim() + "\r\n" +
+                "ADR;TYPE=WORK:;;;" + document.getElementById('city').value.trim() + ";" + document.getElementById('state').value.trim() + ";;\r\n" +
+                "NOTE:" + document.getElementById('notes').value.trim() + "\r\n" +
+                "END:VCARD";
+            
+            // 2. Encode it as a standard MIME record
+            const contactRecord = { 
+                recordType: "mime", 
+                mimeType: "text/vcard", 
+                data: new TextEncoder().encode(vcard) 
+            };
+
+            // 3. THE FAILSAFE: Write it as a multi-record array
+            await ndef.write({ records: [contactRecord] });
+        }
                     
                     const vcardUri = "data:text/vcard;base64," + btoa(unescape(encodeURIComponent(vcard)));
                     record = { recordType: "url", data: vcardUri };
