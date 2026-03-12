@@ -176,7 +176,10 @@
         await ndef.scan();
         
         const cleanTel = telInput.replace(/\D/g,'');
-        const writeData = scriptURL + "?id=" + cleanTel;
+        // --- THE FIX STARTS HERE ---
+        // Instead of writing the Google Script URL, we write the Direct VCF link
+        const writeData = "https://RealtorStacie.github.io/CRS-NFCTag-Kiosk/vcf/" + cleanTel + ".vcf";
+        // --- THE FIX ENDS HERE ---
 
         await ndef.write({
             records: [{ recordType: "url", data: writeData }]
