@@ -66,8 +66,8 @@
     </div>
 
     <div id="nfcModal">
-        <h2 id="modalText">📡 READY TO PROGRAM</h2>
-        <p id="modalSubtext">Touch and hold the tag to the back of the device...</p>
+        <h2 id="modalText">📡 TOUCH & HOLD</h2>
+        <p id="modalSubtext">Keep the tag against the back of the device...</p>
     </div>
 
     <script>
@@ -100,11 +100,16 @@
             }
             
             const modal = document.getElementById('nfcModal');
+            const modalText = document.getElementById('modalText');
+            const modalSub = document.getElementById('modalSubtext');
             modal.style.display = 'flex';
 
             try {
                 const ndef = new NDEFReader();
                 await ndef.scan();
+
+                // Give the user a moment to stabilize the tag
+                await new Promise(resolve => setTimeout(resolve, 300));
 
                 let record;
                 if (currentMode === 'url') {
@@ -120,7 +125,6 @@
                         "NOTE:" + document.getElementById('notes').value.trim() + "\r\n" +
                         "END:VCARD";
                     
-                    // THE FIX: Encode as a Data URI to bypass MIME labeling issues
                     const vcardUri = "data:text/vcard;base64," + btoa(unescape(encodeURIComponent(vcard)));
                     record = { recordType: "url", data: vcardUri };
                 }
@@ -130,9 +134,9 @@
                 nextScreen(5);
 
             } catch (error) {
-                document.getElementById('modalText').innerText = "❌ ERROR";
-                document.getElementById('modalSubtext').innerText = error.message;
-                setTimeout(() => { modal.style.display = 'none'; }, 4000);
+                modalText.innerText = "❌ TOUCH ERROR";
+                modalSub.innerText = "Hold the tag still against the center of the device.";
+                setTimeout(() => { modal.style.display = 'none'; }, 3500);
             }
         }
 
