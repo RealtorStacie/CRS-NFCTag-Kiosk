@@ -23,18 +23,20 @@
         .active { display: flex; }
 
         .hit-zone {
-            background: rgba(255, 255, 255, 0); 
+            background: rgba(255, 255, 255, 0); /* Change 0 to 0.4 to see buttons for testing */
             border: none; cursor: pointer; position: absolute;
         }
 
         /* Hit Zone Coordinates */
-        #startBtn { top: 10%; left: 45%; width: 20%; height: 10%; }
-        #doneStep1Btn { bottom: 8%; width: 35%; height: 12%; }
-        #contactChoice { top: 43%; left: 8%; width: 35%; height: 15%; }
-        #urlChoice { top: 43%; right: 8%; width: 35%; height: 15%; }
-        #writeBtn { bottom: 4%; width: 68%; height: 13%; border-radius: 20px; }
-        #thanksBtn { bottom: 42%; left: 14%; width: 35%; height: 13%; }
-        #restartBtn { bottom: 53%; right: 18%; width: 32%; height: 8%; }
+        #startBtn { top: 10%; left: 40%; width: 25%; height: 12%; }
+        #doneStep1Btn { bottom: 8%; left: 32%; width: 36%; height: 12%; }
+        #contactChoice { top: 43%; left: 8%; width: 35%; height: 16%; }
+        #urlChoice { top: 43%; right: 8%; width: 35%; height: 16%; }
+        #writeBtn { bottom: 4%; left: 16%; width: 68%; height: 13%; border-radius: 20px; }
+        
+        /* Confirmation Screen: Expanded to cover both Wow and Oops buttons */
+        #thanksBtn { bottom: 40%; left: 14%; width: 36%; height: 15%; }
+        #restartBtn { bottom: 50%; right: 15%; width: 36%; height: 15%; }
 
         .form-container { 
             position: absolute; top: 22%; width: 62%; height: 48%;
@@ -67,4 +69,112 @@
 
     <div id="screen3" class="screen" style="background-image: url('bg_choice.png');">
         <button id="contactChoice" class="hit-zone" onclick="showForm('contact')"></button>
-        <button id="urlChoice" class="hit-zone" onclick="showForm('
+        <button id="urlChoice" class="hit-zone" onclick="showForm('url')"></button>
+    </div>
+
+    <div id="screen4" class="screen" style="background-image: url('bg_form.png');">
+        <div id="contactFields" class="form-container">
+            <input type="text" id="fn" placeholder="First & Last Name">
+            <input type="tel" id="tel" placeholder="Cell Phone">
+            <input type="email" id="email" placeholder="Email">
+            <input type="text" id="city" placeholder="City">
+            <input type="text" id="state" placeholder="State">
+            <textarea id="notes" placeholder="Niche and/or Top 3 Areas Served" maxlength="150"></textarea>
+            <div id="charCount" class="char-counter">150 chars remaining</div>
+        </div>
+        <div id="urlFields" class="form-container" style="display:none;">
+            <p style="color:#333; margin-bottom:5px;">Enter Website URL:</p>
+            <input type="url" id="urlInput" placeholder="https://linktr.ee/yourname" maxlength="100">
+        </div>
+        <button id="writeBtn" class="hit-zone" onclick="initiateWrite()"></button>
+    </div>
+
+    <div id="screen5" class="screen" style="background-image: url('bg_confirmation.png');">
+        <button id="thanksBtn" class="hit-zone" onclick="resetKiosk()"></button>
+        <button id="restartBtn" class="hit-zone" onclick="resetKiosk()"></button>
+    </div>
+
+    <div id="nfcModal">
+        <h2 id="modalText">📡 READY TO PROGRAM</h2>
+        <p id="modalSubtext">Tap your CRS Tag to the back of the device now.</p>
+    </div>
+
+    <script>
+        let currentMode = 'contact';
+
+        const notesInput = document.getElementById('notes');
+        const charDisplay = document.getElementById('charCount');
+        notesInput.addEventListener('input', () => {
+            const remaining = 150 - notesInput.value.length;
+            charDisplay.innerText = `${remaining} chars remaining`;
+            charDisplay.style.color = remaining < 15 ? 'red' : '#333';
+        });
+
+        function nextScreen(num) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen' + num).classList.add('active');
+        }
+
+        function showForm(mode) {
+            currentMode = mode;
+            document.getElementById('contactFields').style.display = mode === 'contact' ? 'flex' : 'none';
+            document.getElementById('urlFields').style.display = mode === 'url' ? 'flex' : 'none';
+            nextScreen(4);
+        }
+
+        async function initiateWrite() {
+            if (!('NDEFReader' in window)) {
+                alert("NFC not supported. Please use Chrome on Android.");
+                return;
+            }
+            
+            const modal = document.getElementById('nfcModal');
+            const modalText = document.getElementById('modalText');
+            modal.style.display = 'flex';
+
+            try {
+                const ndef = new NDEFReader();
+                await ndef.scan();
+
+                let record;
+                if (currentMode === 'url') {
+                    record = { recordType: "url", data: document.getElementById('urlInput').value.trim() };
+                } else {
+                    // Precise VCF format with explicit line breaks for better compatibility
+                    const vcard = 
+                        "BEGIN:VCARD\r\n" +
+                        "VERSION:3.0\r\n" +
+                        "FN:" + document.getElementById('fn').value.trim() + "\r\n" +
+                        "TEL;TYPE=CELL:" + document.getElementById('tel').value.trim() + "\r\n" +
+                        "EMAIL:" + document.getElementById('email').value.trim() + "\r\n" +
+                        "ADR;TYPE=WORK:;;;" + document.getElementById('city').value.trim() + ";" + document.getElementById('state').value.trim() + ";;\r\n" +
+                        "NOTE:" + document.getElementById('notes').value.trim() + "\r\n" +
+                        "END:VCARD";
+                    
+                    record = { 
+                        recordType: "mime", 
+                        mimeType: "text/x-vcard", 
+                        data: new TextEncoder().encode(vcard) 
+                    };
+                }
+
+                await ndef.write({ records: [record] });
+                
+                modal.style.display = 'none';
+                nextScreen(5);
+
+            } catch (error) {
+                modalText.innerText = "❌ ERROR";
+                document.getElementById('modalSubtext').innerText = error.message;
+                setTimeout(() => { modal.style.display = 'none'; }, 4000);
+            }
+        }
+
+        function resetKiosk() {
+            document.querySelectorAll('input, textarea').forEach(i => i.value = '');
+            charDisplay.innerText = "150 chars remaining";
+            nextScreen(1);
+        }
+    </script>
+</body>
+</html>
