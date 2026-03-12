@@ -3,58 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stacie Duffy - CRS NFC Tag Kiosk</title>
+    <title>Stacie Duffy - CRS Kiosk</title>
     <style>
-        :root { --crs-blue: #00B6ED; --crs-navy: #002244; }
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; background-color: var(--crs-navy); }
+        * { box-sizing: border-box; }
+        :root { --crs-blue: #00B6ED; --crs-navy: #002244; --crs-gold: #C5A059; }
+        
+        body, html { 
+            margin: 0; padding: 0; height: 100%; 
+            font-family: 'Segoe UI', sans-serif; 
+            overflow: hidden; background-color: var(--crs-navy); 
+        }
         
         .screen { 
             position: absolute; width: 100%; height: 100%; 
-            background-size: cover; background-position: center;
+            background-size: 100% 100%; background-position: center;
+            background-repeat: no-repeat;
             display: none; flex-direction: column; align-items: center;
         }
         .active { display: flex; }
-input:invalid, textarea:invalid {
-    border: 2px solid red;
-}
-        /* Transparent Hit Zones for Canva Buttons */
+
         .hit-zone {
-            background: rgba(255, 255, 255, 0); /* Invisible but clickable */
+            background: rgba(255, 255, 255, 0); 
             border: none; cursor: pointer; position: absolute;
         }
 
-        /* Screen 1 Button Position */
-        #startBtn { top: 15%; left: 50%; transform: translateX(-5%); width: 180px; height: 80px; }
+        /* Hit Zone Coordinates */
+        #startBtn { top: 10%; left: 45%; width: 20%; height: 10%; }
+        #doneStep1Btn { bottom: 8%; width: 35%; height: 12%; }
+        #contactChoice { top: 43%; left: 8%; width: 35%; height: 15%; }
+        #urlChoice { top: 43%; right: 8%; width: 35%; height: 15%; }
+        #writeBtn { bottom: 4%; width: 68%; height: 13%; border-radius: 20px; }
+        #thanksBtn { bottom: 42%; left: 14%; width: 35%; height: 13%; }
+        #restartBtn { bottom: 53%; right: 18%; width: 32%; height: 8%; }
 
-        /* Screen 2 Button Position */
-        #doneStep1Btn { bottom: 8%; width: 350px; height: 100px; }
-
-        /* Screen 3 Button Positions */
-        #contactChoice { top: 43%; left: 10%; width: 350px; height: 120px; }
-        #urlChoice { top: 43%; right: 10%; width: 350px; height: 120px; }
-
-        /* Form Area - Matches the gray box in bg_form.png */
         .form-container { 
-            position: absolute; top: 22%; width: 60%; height: 50%;
-            display: flex; flex-direction: column; gap: 12px; justify-content: center;
+            position: absolute; top: 22%; width: 62%; height: 48%;
+            display: flex; flex-direction: column; gap: 1vh; justify-content: center;
         }
         input, textarea { 
-            padding: 12px; border-radius: 6px; border: 1px solid #ccc; 
-            font-size: 16px; width: 100%; box-sizing: border-box;
+            padding: 1.5vh; border-radius: 6px; border: 1px solid #ccc; 
+            font-size: 1.8vh; width: 100%; background: white;
         }
-        textarea { height: 80px; resize: none; }
+        textarea { height: 10vh; resize: none; }
+        .char-counter { font-size: 1.2vh; color: #333; text-align: right; margin-top: -5px; }
 
-        /* Final Action Button (The Blue Bar) */
-        #writeBtn { bottom: 4.5%; width: 65%; height: 120px; border-radius: 20px; }
-
-        /* Confirmation Screen Buttons */
-        #thanksBtn { bottom: 42%; left: 15%; width: 350px; height: 120px; }
-        #restartBtn { bottom: 53%; right: 18%; width: 320px; height: 70px; }
-
-        /* NFC Modal Styling */
         #nfcModal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); color: white;
+            background: rgba(0,34,68,0.95); color: white;
             display: none; flex-direction: column; align-items: center; justify-content: center;
             z-index: 1000; text-align: center;
         }
@@ -72,94 +67,4 @@ input:invalid, textarea:invalid {
 
     <div id="screen3" class="screen" style="background-image: url('bg_choice.png');">
         <button id="contactChoice" class="hit-zone" onclick="showForm('contact')"></button>
-        <button id="urlChoice" class="hit-zone" onclick="showForm('url')"></button>
-    </div>
-
-    <div id="screen4" class="screen" style="background-image: url('bg_form.png');">
-        <div id="contactFields" class="form-container">
-            <input type="text" id="fn" placeholder="First & Last Name">
-            <input type="tel" id="tel" placeholder="Cell Phone">
-            <input type="email" id="email" placeholder="Email">
-            <input type="text" id="city" placeholder="City">
-            <input type="text" id="state" placeholder="State">
-            <textarea id="notes" placeholder="Niche and/or Top 3 Areas Served" maxlength="150"></textarea>
-        </div>
-        <div id="urlFields" class="form-container" style="display:none;">
-            <p style="color:#333; font-weight:bold;">Enter your full Website URL:</p>
-            <input type="url" id="urlInput" placeholder="https://linktr.ee/yourname">
-        </div>
-        <button id="writeBtn" class="hit-zone" onclick="initiateWrite()"></button>
-    </div>
-
-    <div id="screen5" class="screen" style="background-image: url('bg_confirmation.png');">
-        <button id="thanksBtn" class="hit-zone" onclick="resetKiosk()"></button>
-        <button id="restartBtn" class="hit-zone" onclick="nextScreen(3)"></button>
-    </div>
-
-    <div id="nfcModal">
-        <h2>📡 READY TO PROGRAM</h2>
-        <p>Tap your CRS Tag to the back of the tablet now.</p>
-        <p id="modalStatus" style="color: var(--crs-blue);"></p>
-    </div>
-
-    <script>
-        let currentMode = 'contact';
-
-        function nextScreen(num) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById('screen' + num).classList.add('active');
-        }
-
-        function showForm(mode) {
-            currentMode = mode;
-            document.getElementById('contactFields').style.display = mode === 'contact' ? 'flex' : 'none';
-            document.getElementById('urlFields').style.display = mode === 'url' ? 'flex' : 'none';
-            nextScreen(4);
-        }
-
-        async function initiateWrite() {
-          const notes = document.getElementById('notes').value;
-if (notes.length >= 150) {
-    document.getElementById('modalStatus').innerText = "⚠️ Note is at max capacity! (150 chars)";
-    // Optional: stay on the screen so they can edit
-}  
-          
-          if (!('NDEFReader' in window)) {
-                alert("NFC not supported. Please use Chrome on Android.");
-                return;
-            }
-            
-            const modal = document.getElementById('nfcModal');
-            modal.style.display = 'flex';
-
-            try {
-                const ndef = new NDEFReader();
-                await ndef.scan();
-
-                let record;
-                if (currentMode === 'url') {
-                    record = { recordType: "url", data: document.getElementById('urlInput').value };
-                } else {
-                    const vcard = `BEGIN:VCARD\nVERSION:3.0\nFN:${document.getElementById('fn').value}\nTEL;TYPE=CELL:${document.getElementById('tel').value}\nEMAIL:${document.getElementById('email').value}\nADR;TYPE=WORK:;;;${document.getElementById('city').value};${document.getElementById('state').value};;\nNOTE:${document.getElementById('notes').value}\nEND:VCARD`;
-                    record = { recordType: "mime", mimeType: "text/vcard", data: new TextEncoder().encode(vcard) };
-                }
-
-                await ndef.write({ records: [record] });
-                
-                modal.style.display = 'none';
-                nextScreen(5); // Show confirmation screen
-
-            } catch (error) {
-                document.getElementById('modalStatus').innerText = "Error: " + error;
-                setTimeout(() => { modal.style.display = 'none'; }, 3000);
-            }
-        }
-
-        function resetKiosk() {
-            // Clear inputs and go back to start
-            document.querySelectorAll('input, textarea').forEach(i => i.value = '');
-            nextScreen(1);
-        }
-    </script>
-</body>
-</html>
+        <button id="urlChoice" class="hit-zone" onclick="showForm('
