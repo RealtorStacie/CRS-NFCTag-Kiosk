@@ -125,7 +125,7 @@
             try {
                 const ndef = new NDEFReader();
                 await ndef.scan();
-                await new Promise(r => setTimeout(r, 400));
+                await new Promise(r => setTimeout(r, 500)); // Longer stabilization
 
                 let record;
                 if (currentMode === 'url') {
@@ -141,9 +141,9 @@
                         "NOTE:" + document.getElementById('notes').value.trim() + "\r\n" +
                         "END:VCARD";
                     
+                    // CHANGE: Using 'unknown' record type to force Android to "sniff" the content
                     record = { 
-                        recordType: "mime", 
-                        mimeType: "text/x-vcard", 
+                        recordType: "unknown", 
                         data: new TextEncoder().encode(vcard) 
                     };
                 }
@@ -157,7 +157,6 @@
                 setTimeout(() => { modal.style.display = 'none'; }, 3500);
             }
         }
-
         function resetKiosk() {
             document.querySelectorAll('input, textarea').forEach(i => i.value = '');
             charDisplay.innerText = "150 chars remaining";
