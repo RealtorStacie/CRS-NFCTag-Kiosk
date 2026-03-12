@@ -114,77 +114,82 @@
             nextScreen(4);
         }
 
-        async function initiateWrite() {
-            if (!('NDEFReader' in window)) {
-                alert("NFC not supported. Use Chrome on Android.");
-                return;
-            }
+       async function initiateWrite() {
+    if (!('NDEFReader' in window)) {
+        alert("NFC not supported. Use Chrome on Android.");
+        return;
+    }
 
-            const telInput = document.getElementById('tel').value.trim();
-            if (!telInput && currentMode === 'contact') {
-                alert("Please enter a phone number to program the tag.");
-                return;
-            }
-            
-            const modal = document.getElementById('nfcModal');
-            const modalText = document.getElementById('modalText');
-            modal.style.display = 'flex';
+    const telInput = document.getElementById('tel').value.trim();
+    if (!telInput && currentMode === 'contact') {
+        alert("Please enter a phone number.");
+        return;
+    }
+    
+    const modal = document.getElementById('nfcModal');
+    const modalText = document.getElementById('modalText');
+    modal.style.display = 'flex';
 
-            try {
-                const scriptURL = 'https://script.google.com/macros/s/AKfycbwuXRxmk_Af_NvrDf4L1G89hhqF4hJMXgjuvfA4eWzcogBBZ-lzeD9Kqj6Zl6Nde1cJHg/exec';
+    try {
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbwuXRxmk_Af_NvrDf4L1G89hhqF4hJMXgjuvfA4eWzcogBBZ-lzeD9Kqj6Zl6Nde1cJHg/exec';
 
-                // AGGRESSIVE FETCH: Format as a URL-encoded string (Google's native preference)
-                const details = {
-                    'fn': document.getElementById('fn').value.trim(),
-                    'tel': telInput,
-                    'email': document.getElementById('email').value.trim(),
-                    'city': document.getElementById('city').value.trim(),
-                    'state': document.getElementById('state').value.trim(),
-                    'notes': document.getElementById('notes').value.trim()
-                };
+        // THE BULLETPROOF WORKAROUND: Create a hidden form and submit it
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = scriptURL;
+        form.target = 'hidden_iframe'; // Prevents page reload
 
-                let formBody = [];
-                for (let property in details) {
-                    formBody.push(encodeURIComponent(property) + "=" + encodeURIComponent(details[property]));
-                }
-                formBody = formBody.join("&");
+        const fields = {
+            'fn': document.getElementById('fn').value.trim(),
+            'tel': telInput,
+            'email': document.getElementById('email').value.trim(),
+            'city': document.getElementById('city').value.trim(),
+            'state': document.getElementById('state').value.trim(),
+            'notes': document.getElementById('notes').value.trim()
+        };
 
-                // Send Lead Data to Google
-                fetch(scriptURL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-                    body: formBody
-                });
-
-                modalText.innerText = "📡 READY TO PROGRAM";
-                await new Promise(r => setTimeout(r, 1500));
-
-                const ndef = new NDEFReader();
-                await ndef.scan();
-                
-                let writeData;
-                if (currentMode === 'url') {
-                    writeData = document.getElementById('urlInput').value.trim();
-                } else {
-                    // Unique Predictable Link: Uses the Phone Number to find the file
-                    const cleanTel = telInput.replace(/\D/g,'');
-                    writeData = scriptURL + "?id=" + cleanTel;
-                }
-
-                await ndef.write({
-                    records: [{ recordType: "url", data: writeData }]
-                });
-                
-                modal.style.display = 'none';
-                nextScreen(5);
-
-            } catch (error) {
-                document.getElementById('modalText').innerText = "❌ ERROR";
-                setTimeout(() => { modal.style.display = 'none'; }, 4000);
-            }
+        for (const key in fields) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = fields[key];
+            form.appendChild(input);
         }
 
+        // Add a hidden iframe to catch the response
+        let iframe = document.getElementById('hidden_iframe');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'hidden_iframe';
+            iframe.name = 'hidden_iframe';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+
+        modalText.innerText = "📡 READY TO PROGRAM";
+        await new Promise(r => setTimeout(r, 1500));
+
+        const ndef = new NDEFReader();
+        await ndef.scan();
+        
+        const cleanTel = telInput.replace(/\D/g,'');
+        const writeData = scriptURL + "?id=" + cleanTel;
+
+        await ndef.write({
+            records: [{ recordType: "url", data: writeData }]
+        });
+        
+        modal.style.display = 'none';
+        nextScreen(5);
+
+    } catch (error) {
+        document.getElementById('modalText').innerText = "❌ ERROR";
+        setTimeout(() => { modal.style.display = 'none'; }, 4000);
+    }
+}
         function resetKiosk() {
             document.querySelectorAll('input, textarea').forEach(i => i.value = '');
             charDisplay.innerText = "150 chars remaining";
