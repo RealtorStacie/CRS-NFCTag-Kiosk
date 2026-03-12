@@ -8,40 +8,21 @@
         * { box-sizing: border-box; }
         :root { --crs-blue: #00B6ED; --crs-navy: #002244; --crs-gold: #C5A059; }
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; overflow: hidden; background-color: var(--crs-navy); }
-        
-        .screen { 
-            position: absolute; width: 100%; height: 100%; 
-            background-size: 100% 100%; background-position: center; 
-            background-repeat: no-repeat; display: none; 
-            flex-direction: column; align-items: center; 
-        }
+        .screen { position: absolute; width: 100%; height: 100%; background-size: 100% 100%; background-position: center; background-repeat: no-repeat; display: none; flex-direction: column; align-items: center; }
         .active { display: flex; }
-        
-        /* Transparent Hit Zones */
         .hit-zone { background: rgba(255, 255, 255, 0); border: none; cursor: pointer; position: absolute; z-index: 10; }
-
-        /* GLOBAL RESET: Only for internal pages (2, 3, 4, 5) */
         .global-reset { top: 0; left: 0; width: 15%; height: 18%; z-index: 50; }
-
-        /* Screen 1 Button: No overlap anymore */
         #startBtn { top: 10%; left: 45%; width: 25%; height: 15%; }
-
-        /* Navigation Buttons */
         #doneStep1Btn { bottom: 8%; left: 32%; width: 36%; height: 12%; }
         #contactChoice { top: 43%; left: 8%; width: 35%; height: 16%; }
         #urlChoice { top: 43%; right: 8%; width: 35%; height: 16%; }
         #writeBtn { bottom: 4%; left: 16%; width: 68%; height: 13%; border-radius: 20px; }
-        
-        /* Confirmation Screen Buttons */
         #thanksBtn { bottom: 40%; left: 14%; width: 36%; height: 15%; }
         #restartBtn { bottom: 50%; right: 15%; width: 36%; height: 15%; }
-
-        /* Form Styling */
         .form-container { position: absolute; top: 22%; width: 62%; height: 48%; display: flex; flex-direction: column; gap: 1vh; justify-content: center; }
         input, textarea { padding: 1.5vh; border-radius: 6px; border: 1px solid #ccc; font-size: 1.8vh; width: 100%; background: white; color: #333; }
         textarea { height: 10vh; resize: none; }
         .char-counter { font-size: 1.2vh; color: #333; text-align: right; margin-top: -5px; }
-
         #nfcModal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,34,68,0.95); color: white; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; text-align: center; }
     </style>
 </head>
@@ -74,7 +55,6 @@
             <div id="charCount" class="char-counter">150 chars remaining</div>
         </div>
         <div id="urlFields" class="form-container" style="display:none;">
-            <p style="color:#333; font-weight:bold; margin-bottom:5px;">Enter your Website URL:</p>
             <input type="url" id="urlInput" placeholder="https://yourwebsite.com" maxlength="100">
         </div>
         <button id="writeBtn" class="hit-zone" onclick="initiateWrite()"></button>
@@ -88,7 +68,7 @@
 
     <div id="nfcModal">
         <h2 id="modalText">📡 TOUCH & HOLD</h2>
-        <p id="modalSubtext">Keep the tag against the back of the device...</p>
+        <p id="modalSubtext">Syncing with Lead Sheet...</p>
     </div>
 
     <script>
@@ -114,56 +94,65 @@
             nextScreen(4);
         }
 
-     async function initiateWrite() {
-    if (!('NDEFReader' in window)) {
-        alert("NFC not supported. Use Chrome on Android.");
-        return;
-    }
-    
-    const modal = document.getElementById('nfcModal');
-    const modalText = document.getElementById('modalText');
-    const modalSub = document.getElementById('modalSubtext');
-    
-    modalText.innerText = "⏳ GENERATING...";
-    modalSub.innerText = "Syncing with your Lead Sheet...";
-    modal.style.display = 'flex';
+        async function initiateWrite() {
+            if (!('NDEFReader' in window)) {
+                alert("NFC not supported. Use Chrome on Android.");
+                return;
+            }
+            
+            const modal = document.getElementById('nfcModal');
+            const modalText = document.getElementById('modalText');
+            modal.style.display = 'flex';
 
-    try {
-        const formData = {
-            fn: document.getElementById('fn').value.trim(),
-            tel: document.getElementById('tel').value.trim(),
-            email: document.getElementById('email').value.trim(),
-            city: document.getElementById('city').value.trim(),
-            state: document.getElementById('state').value.trim(),
-            notes: document.getElementById('notes').value.trim()
-        };
+            try {
+                const nameValue = document.getElementById('fn').value.trim();
+                const formData = {
+                    fn: nameValue,
+                    tel: document.getElementById('tel').value.trim(),
+                    email: document.getElementById('email').value.trim(),
+                    city: document.getElementById('city').value.trim(),
+                    state: document.getElementById('state').value.trim(),
+                    notes: document.getElementById('notes').value.trim()
+                };
 
-        // SEND DATA TO GOOGLE
-        const response = await fetch(https://script.google.com/macros/s/AKfycbwuXRxmk_Af_NvrDf4L1G89hhqF4hJMXgjuvfA4eWzcogBBZ-lzeD9Kqj6Zl6Nde1cJHg/exec, {
-            method: 'POST',
-            body: JSON.stringify(formData)
-        });
-        const vcfLink = await response.text();
+                // YOUR INTEGRATED URL
+                const scriptURL = 'https://script.google.com/macros/s/AKfycbwuXRxmk_Af_NvrDf4L1G89hhqF4hJMXgjuvfA4eWzcogBBZ-lzeD9Kqj6Zl6Nde1cJHg/exec';
 
-        // WRITE TO NFC
-        modalText.innerText = "📡 TOUCH & HOLD";
-        modalSub.innerText = "Success! Now hold the tag to the back of the tablet...";
-        
-        const ndef = new NDEFReader();
-        await ndef.scan();
-        await ndef.write({
-            records: [{ recordType: "url", data: vcfLink }]
-        });
-        
-        modal.style.display = 'none';
-        nextScreen(5);
+                // Send to Google
+                fetch(scriptURL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(formData)
+                });
 
-    } catch (error) {
-        modalText.innerText = "❌ ERROR";
-        modalSub.innerText = "Check connection or permissions.";
-        setTimeout(() => { modal.style.display = 'none'; }, 4000);
-    }
-}
+                modalText.innerText = "📡 READY TO WRITE";
+                await new Promise(r => setTimeout(r, 1500));
+
+                const ndef = new NDEFReader();
+                await ndef.scan();
+                
+                let writeData;
+                if (currentMode === 'url') {
+                    writeData = document.getElementById('urlInput').value.trim();
+                } else {
+                    // Logic: Search for the specific VCF filename we just created on your Drive
+                    const safeName = nameValue.replace(/\s+/g, '_');
+                    writeData = "https://www.google.com/search?q=" + encodeURIComponent(safeName + ".vcf");
+                }
+
+                await ndef.write({
+                    records: [{ recordType: "url", data: writeData }]
+                });
+                
+                modal.style.display = 'none';
+                nextScreen(5);
+
+            } catch (error) {
+                document.getElementById('modalText').innerText = "❌ ERROR";
+                setTimeout(() => { modal.style.display = 'none'; }, 4000);
+            }
+        }
+
         function resetKiosk() {
             document.querySelectorAll('input, textarea').forEach(i => i.value = '');
             charDisplay.innerText = "150 chars remaining";
