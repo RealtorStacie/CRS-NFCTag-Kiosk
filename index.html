@@ -42,6 +42,27 @@
         textarea { height: 10vh; resize: none; }
         .char-counter { font-size: 1.2vh; color: #333; text-align: right; margin-top: -5px; }
 
+        /* ... existing styles ... */
+    .url-input-group {
+        display: flex;
+        align-items: center;
+        background: white;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        overflow: hidden;
+    }
+    .url-prefix {
+        background: #eee;
+        padding: 1.5vh;
+        font-size: 1.8vh;
+        color: #666;
+        border-right: 1px solid #ccc;
+        user-select: none;
+    }
+    .url-input-group input {
+        border: none;
+        flex: 1;
+    }
         /* Modal Overlay */
         #nfcModal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,34,68,0.95); color: white; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; text-align: center; }
     </style>
@@ -74,11 +95,12 @@
             <textarea id="notes" placeholder="Niche and/or Top 3 Areas Served" maxlength="150"></textarea>
             <div id="charCount" class="char-counter">150 chars remaining</div>
         </div>
-        <div id="urlFields" class="form-container" style="display:none;">
-            <p style="color:white; text-align:center; margin-bottom: 5px;">Lead Tracking for Website Link</p>
-            <input type="text" id="urlName" placeholder="Name">
-            <input type="url" id="urlInput" placeholder="https://yourwebsite.com" maxlength="100">
-        </div>
+       <div id="urlFields" class="form-container" style="display:none;">
+    <input type="text" id="urlName" placeholder="Name">
+    <div class="url-input-group">
+        <span class="url-prefix">https://</span>
+        <input type="text" id="urlInput" placeholder="yourwebsite.com" maxlength="100">
+    </div>
         <button id="writeBtn" class="hit-zone" onclick="initiateWrite()"></button>
     </div>
 
@@ -194,9 +216,20 @@
                 if (currentMode === 'contact') {
                     const cleanTel = fields.tel.replace(/\D/g,'');
                     writeData = "https://RealtorStacie.github.io/CRS-NFCTag-Kiosk/vcf/" + cleanTel + ".vcf";
-                } else {
-                    writeData = fields.targetUrl;
-                }
+                // Inside initiateWrite() for URL mode:
+            } else {
+    let rawUrl = document.getElementById('urlInput').value.trim().toLowerCase();
+    
+    let finalUrl;
+    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+        finalUrl = rawUrl; // They typed it specifically, so we leave it alone
+    } else {
+        finalUrl = "https://" + rawUrl; // Default to secure
+    }
+    
+    fields.targetUrl = finalUrl;
+    fields.fn = document.getElementById('urlName').value.trim();
+}
 
                 await ndef.write({
                     records: [{ recordType: "url", data: writeData }]
