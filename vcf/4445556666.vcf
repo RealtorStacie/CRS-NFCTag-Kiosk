@@ -1,0 +1,8 @@
+BEGIN:VCARD
+VERSION:3.0
+FN:Testing stuff
+TEL;TYPE=CELL:4445556666
+EMAIL:testing@duh.com
+ADR;TYPE=WORK:;;;Lincoln;Ne;;
+NOTE:Djieksennshsw
+END:VCARD
