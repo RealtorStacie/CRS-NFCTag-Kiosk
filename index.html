@@ -75,6 +75,8 @@
             <div id="charCount" class="char-counter">150 chars remaining</div>
         </div>
         <div id="urlFields" class="form-container" style="display:none;">
+            <p style="color:white; text-align:center; margin-bottom: 5px;">Lead Tracking for Website Link</p>
+            <input type="text" id="urlName" placeholder="Agent Name">
             <input type="url" id="urlInput" placeholder="https://yourwebsite.com" maxlength="100">
         </div>
         <button id="writeBtn" class="hit-zone" onclick="initiateWrite()"></button>
@@ -88,7 +90,7 @@
 
     <div id="nfcModal">
         <h2 id="modalText">📡 PREPARING...</h2>
-        <p id="modalSubtext">Stand by while we create your profile.</p>
+        <p id="modalSubtext">Stand by while we sync your data.</p>
     </div>
 
     <script>
@@ -114,85 +116,102 @@
             nextScreen(4);
         }
 
-       async function initiateWrite() {
-    if (!('NDEFReader' in window)) {
-        alert("NFC not supported. Use Chrome on Android.");
-        return;
-    }
+        async function initiateWrite() {
+            if (!('NDEFReader' in window)) {
+                alert("NFC not supported. Use Chrome on Android.");
+                return;
+            }
 
-    const telInput = document.getElementById('tel').value.trim();
-    if (!telInput && currentMode === 'contact') {
-        alert("Please enter a phone number.");
-        return;
-    }
-    
-    const modal = document.getElementById('nfcModal');
-    const modalText = document.getElementById('modalText');
-    modal.style.display = 'flex';
+            // Validations
+            if (currentMode === 'contact') {
+                if (!document.getElementById('tel').value.trim()) {
+                    alert("Please enter a phone number.");
+                    return;
+                }
+            } else {
+                if (!document.getElementById('urlInput').value.trim()) {
+                    alert("Please enter a website URL.");
+                    return;
+                }
+            }
+            
+            const modal = document.getElementById('nfcModal');
+            const modalText = document.getElementById('modalText');
+            modal.style.display = 'flex';
 
-    try {
-        const scriptURL = 'https://script.google.com/macros/s/AKfycbyVlJhEYXiHDLAy7fJYdHzigIyYfv47Kiu5U6RAx5FNkgq2HzmbK9qA0VzwZZPe0NWfIA/exec';
+            try {
+                const scriptURL = 'https://script.google.com/macros/s/AKfycbyVlJhEYXiHDLAy7fJYdHzigIyYfv47Kiu5U6RAx5FNkgq2HzmbK9qA0VzwZZPe0NWfIA/exec';
 
-        // THE BULLETPROOF WORKAROUND: Create a hidden form and submit it
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = scriptURL;
-        form.target = 'hidden_iframe'; // Prevents page reload
+                // CREATE DATA PAYLOAD BASED ON MODE
+                const fields = { 'mode': currentMode };
 
-        const fields = {
-            'fn': document.getElementById('fn').value.trim(),
-            'tel': telInput,
-            'email': document.getElementById('email').value.trim(),
-            'city': document.getElementById('city').value.trim(),
-            'state': document.getElementById('state').value.trim(),
-            'notes': document.getElementById('notes').value.trim()
-        };
+                if (currentMode === 'contact') {
+                    fields.fn = document.getElementById('fn').value.trim();
+                    fields.tel = document.getElementById('tel').value.trim();
+                    fields.email = document.getElementById('email').value.trim();
+                    fields.city = document.getElementById('city').value.trim();
+                    fields.state = document.getElementById('state').value.trim();
+                    fields.notes = document.getElementById('notes').value.trim();
+                } else {
+                    fields.fn = document.getElementById('urlName').value.trim();
+                    fields.targetUrl = document.getElementById('urlInput').value.trim();
+                }
 
-        for (const key in fields) {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = key;
-            input.value = fields[key];
-            form.appendChild(input);
+                // SUBMIT TO GOOGLE VIA HIDDEN FORM
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = scriptURL;
+                form.target = 'hidden_iframe';
+
+                for (const key in fields) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = fields[key];
+                    form.appendChild(input);
+                }
+
+                let iframe = document.getElementById('hidden_iframe');
+                if (!iframe) {
+                    iframe = document.createElement('iframe');
+                    iframe.id = 'hidden_iframe';
+                    iframe.name = 'hidden_iframe';
+                    iframe.style.display = 'none';
+                    document.body.appendChild(iframe);
+                }
+
+                document.body.appendChild(form);
+                form.submit();
+
+                modalText.innerText = "📡 Tap and Hold the Tag to the NFC Reader";
+                await new Promise(r => setTimeout(r, 1500));
+
+                // NFC WRITE LOGIC
+                const ndef = new NDEFReader();
+                await ndef.scan();
+                
+                let writeData = "";
+                if (currentMode === 'contact') {
+                    const cleanTel = fields.tel.replace(/\D/g,'');
+                    writeData = "https://RealtorStacie.github.io/CRS-NFCTag-Kiosk/vcf/" + cleanTel + ".vcf";
+                } else {
+                    writeData = fields.targetUrl;
+                }
+
+                await ndef.write({
+                    records: [{ recordType: "url", data: writeData }]
+                });
+                
+                modal.style.display = 'none';
+                nextScreen(5);
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('modalText').innerText = "❌ ERROR";
+                setTimeout(() => { modal.style.display = 'none'; }, 4000);
+            }
         }
 
-        // Add a hidden iframe to catch the response
-        let iframe = document.getElementById('hidden_iframe');
-        if (!iframe) {
-            iframe = document.createElement('iframe');
-            iframe.id = 'hidden_iframe';
-            iframe.name = 'hidden_iframe';
-            iframe.style.display = 'none';
-            document.body.appendChild(iframe);
-        }
-
-        document.body.appendChild(form);
-        form.submit();
-
-        modalText.innerText = "📡 Tap and Hold the Tag to the NFC Reader";
-        await new Promise(r => setTimeout(r, 1500));
-
-        const ndef = new NDEFReader();
-        await ndef.scan();
-        
-        const cleanTel = telInput.replace(/\D/g,'');
-        // --- THE FIX STARTS HERE ---
-        // Instead of writing the Google Script URL, we write the Direct VCF link
-        const writeData = "https://RealtorStacie.github.io/CRS-NFCTag-Kiosk/vcf/" + cleanTel + ".vcf";
-        // --- THE FIX ENDS HERE ---
-
-        await ndef.write({
-            records: [{ recordType: "url", data: writeData }]
-        });
-        
-        modal.style.display = 'none';
-        nextScreen(5);
-
-    } catch (error) {
-        document.getElementById('modalText').innerText = "❌ ERROR";
-        setTimeout(() => { modal.style.display = 'none'; }, 4000);
-    }
-}
         function resetKiosk() {
             document.querySelectorAll('input, textarea').forEach(i => i.value = '');
             charDisplay.innerText = "150 chars remaining";
