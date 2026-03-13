@@ -17,37 +17,34 @@
         }
         .active { display: flex; }
         
-        /* Transparent Hit Zones */
         .hit-zone { background: rgba(255, 255, 255, 0); border: none; cursor: pointer; position: absolute; z-index: 10; }
-
-        /* Global Reset (Shield) */
         .global-reset { top: 0; left: 0; width: 18%; height: 20%; z-index: 50; }
 
-        /* SCREEN 1: Start */
+        /* SCREEN 1 */
         #startBtn { top: 5%; left: 25%; width: 50%; height: 25%; z-index: 100; }
 
-        /* Navigation Buttons */
+        /* Navigation */
         #doneStep1Btn { bottom: 8%; left: 32%; width: 36%; height: 12%; }
         #contactChoice { top: 43%; left: 8%; width: 35%; height: 16%; }
         #urlChoice { top: 43%; right: 8%; width: 35%; height: 16%; }
         #writeBtn { bottom: 4%; left: 16%; width: 68%; height: 13%; border-radius: 20px; }
         
-        /* Confirmation Screen Buttons */
+        /* Confirmation */
         #thanksBtn { bottom: 40%; left: 14%; width: 36%; height: 15%; }
         #restartBtn { bottom: 50%; right: 15%; width: 36%; height: 15%; }
 
-        /* Form Styling */
+        /* Forms */
         .form-container { position: absolute; top: 22%; width: 62%; height: 48%; display: flex; flex-direction: column; gap: 1vh; justify-content: center; }
         input, textarea { padding: 1.5vh; border-radius: 6px; border: 1px solid #ccc; font-size: 1.8vh; width: 100%; background: white; color: #333; }
         textarea { height: 10vh; resize: none; }
         .char-counter { font-size: 1.2vh; color: #333; text-align: right; margin-top: -5px; }
 
-        /* URL Input Specific Styling */
+        /* URL Prefix Styling */
         .url-input-group { display: flex; align-items: center; background: white; border-radius: 6px; border: 1px solid #ccc; overflow: hidden; }
         .url-prefix { background: #eee; padding: 1.5vh; font-size: 1.8vh; color: #666; border-right: 1px solid #ccc; user-select: none; }
         .url-input-group input { border: none; flex: 1; }
 
-        /* Modal Overlay */
+        /* Modal */
         #nfcModal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,34,68,0.95); color: white; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; text-align: center; }
     </style>
 </head>
@@ -100,7 +97,7 @@
 
     <div id="nfcModal">
         <h2 id="modalText">📡 PREPARING...</h2>
-        <p id="modalSubtext">Stand by while we sync your data.</p>
+        <p id="modalSubtext">Syncing your data...</p>
     </div>
 
     <script>
@@ -108,15 +105,18 @@
         const notesInput = document.getElementById('notes');
         const charDisplay = document.getElementById('charCount');
         
-        notesInput.addEventListener('input', () => {
-            const remaining = 150 - notesInput.value.length;
-            charDisplay.innerText = `${remaining} chars remaining`;
-            charDisplay.style.color = remaining < 15 ? 'red' : '#333';
-        });
+        if (notesInput) {
+            notesInput.addEventListener('input', () => {
+                const remaining = 150 - notesInput.value.length;
+                charDisplay.innerText = `${remaining} chars remaining`;
+                charDisplay.style.color = remaining < 15 ? 'red' : '#333';
+            });
+        }
 
         function nextScreen(num) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById('screen' + num).classList.add('active');
+            const screen = document.getElementById('screen' + num);
+            if (screen) screen.classList.add('active');
         }
 
         function showForm(mode) {
@@ -126,7 +126,14 @@
             nextScreen(4);
         }
 
+        function resetKiosk() {
+            document.querySelectorAll('input, textarea').forEach(i => i.value = '');
+            if (charDisplay) charDisplay.innerText = "150 chars remaining";
+            nextScreen(1);
+        }
+
         async function initiateWrite() {
+            // 1. NFC Check
             if (!('NDEFReader' in window)) {
                 alert("NFC not supported. Use Chrome on Android.");
                 return;
@@ -134,34 +141,43 @@
 
             const modal = document.getElementById('nfcModal');
             const modalText = document.getElementById('modalText');
+            const scriptURL = 'https://script.google.com/macros/s/AKfycbyVlJhEYXiHDLAy7fJYdHzigIyYfv47Kiu5U6RAx5FNkgq2HzmbK9qA0VzwZZPe0NWfIA/exec';
             
-            try {
-                // Ensure the script URL matches your active Google Deployment
-                const scriptURL = 'https://script.google.com/macros/s/AKfycbyVlJhEYXiHDLAy7fJYdHzigIyYfv47Kiu5U6RAx5FNkgq2HzmbK9qA0VzwZZPe0NWfIA/exec';
-                const fields = { 'mode': currentMode };
+            let fields = { 'mode': currentMode };
+            let writeData = "";
 
+            try {
+                // 2. Data Gathering with Safety Checks
                 if (currentMode === 'contact') {
+                    const telEl = document.getElementById('tel');
+                    if (!telEl || !telEl.value.trim()) { alert("Phone required"); return; }
+                    
                     fields.fn = document.getElementById('fn').value.trim();
-                    fields.tel = document.getElementById('tel').value.trim();
+                    fields.tel = telEl.value.trim();
                     fields.email = document.getElementById('email').value.trim();
                     fields.city = document.getElementById('city').value.trim();
                     fields.state = document.getElementById('state').value.trim();
                     fields.notes = document.getElementById('notes').value.trim();
-                    if (!fields.tel) { alert("Phone number is required."); return; }
-                } else {
-                    let rawUrl = document.getElementById('urlInput').value.trim().toLowerCase();
-                    if (!rawUrl) { alert("Please enter a website URL."); return; }
                     
-                    // Strip existing protocol if typed to avoid double https://
-                    rawUrl = rawUrl.replace(/^https?:\/\//, '');
+                    writeData = "https://RealtorStacie.github.io/CRS-NFCTag-Kiosk/vcf/" + fields.tel.replace(/\D/g,'') + ".vcf";
+                } else {
+                    const urlEl = document.getElementById('urlInput');
+                    if (!urlEl || !urlEl.value.trim()) { alert("URL required"); return; }
+                    
+                    let rawUrl = urlEl.value.trim().toLowerCase();
+                    rawUrl = rawUrl.replace(/^https?:\/\//, ''); // Strip typed protocol
+                    
                     fields.targetUrl = "https://" + rawUrl;
                     fields.fn = document.getElementById('urlName').value.trim();
+                    
+                    writeData = fields.targetUrl;
                 }
 
+                // 3. Show Modal
                 modal.style.display = 'flex';
-                modalText.innerText = "📡 SYNCING DATA...";
+                modalText.innerText = "📡 SYNCING...";
 
-                // SUBMIT TO GOOGLE
+                // 4. Submit to Google
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = scriptURL;
@@ -186,22 +202,10 @@
                 document.body.appendChild(form);
                 form.submit();
 
-                // WAIT FOR USER TO PREPARE TAG
-                modalText.innerText = "📡 Tap and Hold the Tag to the NFC Reader";
-                await new Promise(r => setTimeout(r, 1000));
-
-                // START NFC WRITE
+                // 5. NFC Writing
+                modalText.innerText = "📡 TAP AND HOLD TAG NOW";
                 const ndef = new NDEFReader();
                 await ndef.scan();
-                
-                let writeData = "";
-                if (currentMode === 'contact') {
-                    const cleanTel = fields.tel.replace(/\D/g,'');
-                    writeData = "https://RealtorStacie.github.io/CRS-NFCTag-Kiosk/vcf/" + cleanTel + ".vcf";
-                } else {
-                    writeData = fields.targetUrl;
-                }
-
                 await ndef.write({
                     records: [{ recordType: "url", data: writeData }]
                 });
@@ -210,16 +214,9 @@
                 nextScreen(5);
 
             } catch (error) {
-                console.error(error);
-                modalText.innerText = "❌ ERROR: Check Connection";
-                setTimeout(() => { modal.style.display = 'none'; }, 4000);
+                alert("Error: " + error);
+                modal.style.display = 'none';
             }
-        }
-
-        function resetKiosk() {
-            document.querySelectorAll('input, textarea').forEach(i => i.value = '');
-            charDisplay.innerText = "150 chars remaining";
-            nextScreen(1);
         }
     </script>
 </body>
