@@ -20,10 +20,10 @@
         /* Transparent Hit Zones */
         .hit-zone { background: rgba(255, 255, 255, 0); border: none; cursor: pointer; position: absolute; z-index: 10; }
 
-        /* Global Reset (Shield) - ONLY on Screens 2, 3, 4, 5 */
+        /* Global Reset (Shield) */
         .global-reset { top: 0; left: 0; width: 18%; height: 20%; z-index: 50; }
 
-        /* SCREEN 1: Massive Start Button for S10e */
+        /* SCREEN 1: Start */
         #startBtn { top: 5%; left: 25%; width: 50%; height: 25%; z-index: 100; }
 
         /* Navigation Buttons */
@@ -42,27 +42,11 @@
         textarea { height: 10vh; resize: none; }
         .char-counter { font-size: 1.2vh; color: #333; text-align: right; margin-top: -5px; }
 
-        /* ... existing styles ... */
-    .url-input-group {
-        display: flex;
-        align-items: center;
-        background: white;
-        border-radius: 6px;
-        border: 1px solid #ccc;
-        overflow: hidden;
-    }
-    .url-prefix {
-        background: #eee;
-        padding: 1.5vh;
-        font-size: 1.8vh;
-        color: #666;
-        border-right: 1px solid #ccc;
-        user-select: none;
-    }
-    .url-input-group input {
-        border: none;
-        flex: 1;
-    }
+        /* URL Input Specific Styling */
+        .url-input-group { display: flex; align-items: center; background: white; border-radius: 6px; border: 1px solid #ccc; overflow: hidden; }
+        .url-prefix { background: #eee; padding: 1.5vh; font-size: 1.8vh; color: #666; border-right: 1px solid #ccc; user-select: none; }
+        .url-input-group input { border: none; flex: 1; }
+
         /* Modal Overlay */
         #nfcModal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,34,68,0.95); color: white; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; text-align: center; }
     </style>
@@ -86,6 +70,7 @@
 
     <div id="screen4" class="screen" style="background-image: url('bg_form.png');">
         <button class="hit-zone global-reset" onclick="resetKiosk()"></button>
+        
         <div id="contactFields" class="form-container">
             <input type="text" id="fn" placeholder="First & Last Name">
             <input type="tel" id="tel" placeholder="Cell Phone Number (Required)">
@@ -95,12 +80,15 @@
             <textarea id="notes" placeholder="Niche and/or Top 3 Areas Served" maxlength="150"></textarea>
             <div id="charCount" class="char-counter">150 chars remaining</div>
         </div>
-       <div id="urlFields" class="form-container" style="display:none;">
-    <input type="text" id="urlName" placeholder="Name">
-    <div class="url-input-group">
-        <span class="url-prefix">https://</span>
-        <input type="text" id="urlInput" placeholder="yourwebsite.com" maxlength="100">
-    </div>
+
+        <div id="urlFields" class="form-container" style="display:none;">
+            <input type="text" id="urlName" placeholder="Name">
+            <div class="url-input-group">
+                <span class="url-prefix">https://</span>
+                <input type="text" id="urlInput" placeholder="yourwebsite.com" maxlength="100">
+            </div>
+        </div>
+
         <button id="writeBtn" class="hit-zone" onclick="initiateWrite()"></button>
     </div>
 
@@ -144,27 +132,12 @@
                 return;
             }
 
-            // Validations
-            if (currentMode === 'contact') {
-                if (!document.getElementById('tel').value.trim()) {
-                    alert("Please enter a phone number.");
-                    return;
-                }
-            } else {
-                if (!document.getElementById('urlInput').value.trim()) {
-                    alert("Please enter a website URL.");
-                    return;
-                }
-            }
-            
             const modal = document.getElementById('nfcModal');
             const modalText = document.getElementById('modalText');
-            modal.style.display = 'flex';
-
+            
             try {
+                // Ensure the script URL matches your active Google Deployment
                 const scriptURL = 'https://script.google.com/macros/s/AKfycbyVlJhEYXiHDLAy7fJYdHzigIyYfv47Kiu5U6RAx5FNkgq2HzmbK9qA0VzwZZPe0NWfIA/exec';
-
-                // CREATE DATA PAYLOAD BASED ON MODE
                 const fields = { 'mode': currentMode };
 
                 if (currentMode === 'contact') {
@@ -174,12 +147,21 @@
                     fields.city = document.getElementById('city').value.trim();
                     fields.state = document.getElementById('state').value.trim();
                     fields.notes = document.getElementById('notes').value.trim();
+                    if (!fields.tel) { alert("Phone number is required."); return; }
                 } else {
+                    let rawUrl = document.getElementById('urlInput').value.trim().toLowerCase();
+                    if (!rawUrl) { alert("Please enter a website URL."); return; }
+                    
+                    // Strip existing protocol if typed to avoid double https://
+                    rawUrl = rawUrl.replace(/^https?:\/\//, '');
+                    fields.targetUrl = "https://" + rawUrl;
                     fields.fn = document.getElementById('urlName').value.trim();
-                    fields.targetUrl = document.getElementById('urlInput').value.trim();
                 }
 
-                // SUBMIT TO GOOGLE VIA HIDDEN FORM
+                modal.style.display = 'flex';
+                modalText.innerText = "📡 SYNCING DATA...";
+
+                // SUBMIT TO GOOGLE
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = scriptURL;
@@ -201,14 +183,14 @@
                     iframe.style.display = 'none';
                     document.body.appendChild(iframe);
                 }
-
                 document.body.appendChild(form);
                 form.submit();
 
+                // WAIT FOR USER TO PREPARE TAG
                 modalText.innerText = "📡 Tap and Hold the Tag to the NFC Reader";
-                await new Promise(r => setTimeout(r, 1500));
+                await new Promise(r => setTimeout(r, 1000));
 
-                // NFC WRITE LOGIC
+                // START NFC WRITE
                 const ndef = new NDEFReader();
                 await ndef.scan();
                 
@@ -216,20 +198,9 @@
                 if (currentMode === 'contact') {
                     const cleanTel = fields.tel.replace(/\D/g,'');
                     writeData = "https://RealtorStacie.github.io/CRS-NFCTag-Kiosk/vcf/" + cleanTel + ".vcf";
-                // Inside initiateWrite() for URL mode:
-            } else {
-    let rawUrl = document.getElementById('urlInput').value.trim().toLowerCase();
-    
-    let finalUrl;
-    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
-        finalUrl = rawUrl; // They typed it specifically, so we leave it alone
-    } else {
-        finalUrl = "https://" + rawUrl; // Default to secure
-    }
-    
-    fields.targetUrl = finalUrl;
-    fields.fn = document.getElementById('urlName').value.trim();
-}
+                } else {
+                    writeData = fields.targetUrl;
+                }
 
                 await ndef.write({
                     records: [{ recordType: "url", data: writeData }]
@@ -240,7 +211,7 @@
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('modalText').innerText = "❌ ERROR";
+                modalText.innerText = "❌ ERROR: Check Connection";
                 setTimeout(() => { modal.style.display = 'none'; }, 4000);
             }
         }
